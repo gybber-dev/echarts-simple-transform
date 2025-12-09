@@ -86,6 +86,7 @@ const METHOD_INTERNAL = {
     'SUM': true,
     'COUNT': true,
     'FIRST': true,
+    'LAST': true,
     'AVERAGE': true,
     'Q1': true,
     'Q2': true,
@@ -107,7 +108,7 @@ const METHOD_ALIAS = {
 
 type AggregateMethodLoose =
     AggregateMethodInternal
-    | 'sum' | 'count' | 'first' | 'average' | 'Q1' | 'Q2' | 'Q3' | 'median' | 'min' | 'max';
+    | 'sum' | 'count' | 'first' | 'last' | 'average' | 'Q1' | 'Q2' | 'Q3' | 'median' | 'min' | 'max';
 type AggregateMethodInternal = keyof typeof METHOD_INTERNAL;
 
 
@@ -505,6 +506,9 @@ const lineCreator: {
     'FIRST'(upstream, dataIndex, dimInfo) {
         return upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream);
     },
+    'LAST'(upstream, dataIndex, dimInfo) {
+        return upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream);
+    },
     'MIN'(upstream, dataIndex, dimInfo) {
         return upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream);
     },
@@ -550,6 +554,9 @@ const lineUpdater: {
     },
     'FIRST'(val) {
         return val;
+    },
+    'LAST'(_val, upstream, dataIndex, dimInfo) {
+        return upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream);
     },
     'MIN'(val, upstream, dataIndex, dimInfo) {
         return Math.min(val as number, upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream) as number);

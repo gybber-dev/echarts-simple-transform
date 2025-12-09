@@ -16,6 +16,7 @@ There's an [active issue](https://github.com/apache/echarts/issues/15306) in the
 - The bundles are generated with TSC `module` as `ESNext` instead of `ES2015`.
 - Add `AggregateTransformConfig`.
 - Export `ExternalDataTransformParam`, `ExternalDataTransform`.
+- Add support for `'last'` aggregation method.
 
 ### Aggregate Transform
 ```js
@@ -66,6 +67,7 @@ Current supported `method`s (case insensitive):
 + 'sum'
 + 'count'
 + 'first'
++ 'last'
 + 'average'
 + 'Q1'
 + 'Q2' or 'median'
