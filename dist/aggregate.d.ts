@@ -15,6 +15,7 @@ declare const METHOD_INTERNAL: {
     readonly SUM: true;
     readonly COUNT: true;
     readonly FIRST: true;
+    readonly LAST: true;
     readonly AVERAGE: true;
     readonly Q1: true;
     readonly Q2: true;
@@ -22,7 +23,7 @@ declare const METHOD_INTERNAL: {
     readonly MIN: true;
     readonly MAX: true;
 };
-declare type AggregateMethodLoose = AggregateMethodInternal | 'sum' | 'count' | 'first' | 'average' | 'Q1' | 'Q2' | 'Q3' | 'median' | 'min' | 'max';
+declare type AggregateMethodLoose = AggregateMethodInternal | 'sum' | 'count' | 'first' | 'last' | 'average' | 'Q1' | 'Q2' | 'Q3' | 'median' | 'min' | 'max';
 declare type AggregateMethodInternal = keyof typeof METHOD_INTERNAL;
 export declare const transform: ExternalDataTransform<AggregateTransformOption>;
 export {};

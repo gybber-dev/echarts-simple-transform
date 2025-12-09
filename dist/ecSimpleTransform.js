@@ -45,6 +45,7 @@
         'SUM': true,
         'COUNT': true,
         'FIRST': true,
+        'LAST': true,
         'AVERAGE': true,
         'Q1': true,
         'Q2': true,
@@ -288,6 +289,9 @@
         'FIRST'(upstream, dataIndex, dimInfo) {
             return upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream);
         },
+        'LAST'(upstream, dataIndex, dimInfo) {
+            return upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream);
+        },
         'MIN'(upstream, dataIndex, dimInfo) {
             return upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream);
         },
@@ -320,6 +324,9 @@
         },
         'FIRST'(val) {
             return val;
+        },
+        'LAST'(_val, upstream, dataIndex, dimInfo) {
+            return upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream);
         },
         'MIN'(val, upstream, dataIndex, dimInfo) {
             return Math.min(val, upstream.retrieveValue(dataIndex, dimInfo.indexInUpstream));
