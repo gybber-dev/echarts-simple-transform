@@ -6,6 +6,9 @@ export interface AggregateTransformConfig {
         method: AggregateMethodLoose;
     }[];
     groupBy: DimensionLoose;
+    fillInnerGaps?: {
+        stepMs?: number;
+    };
 }
 export interface AggregateTransformOption extends DataTransformOption {
     type: 'ecSimpleTransform:aggregate';

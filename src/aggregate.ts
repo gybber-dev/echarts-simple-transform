@@ -75,6 +75,14 @@ export interface AggregateTransformConfig {
     }[];
     // Optional
     groupBy: DimensionLoose;
+    /**
+     * When set, fills missing buckets between min and max with null values.
+     * Only applies when stepMs is provided (hourly, daily, weekly).
+     * Monthly is not supported — variable step requires date arithmetic.
+     */
+    fillInnerGaps?: {
+        stepMs?: number;
+    };
 }
 
 export interface AggregateTransformOption extends DataTransformOption {
@@ -233,12 +241,18 @@ export const transform: ExternalDataTransform<AggregateTransformOption> = {
         }
 
         // Calculate
+        const stepMs = config.fillInnerGaps?.stepMs;
+        const fillConfig = (groupByDimInfo && stepMs != null && stepMs > 0)
+            ? { stepMs, dimCount: finalResultDimInfoList.length }
+            : undefined;
+
         const finalResult = travel(
             groupByDimInfo,
             upstream,
             finalResultDimInfoList,
             createFinalResultLine,
-            updateFinalResultLine
+            updateFinalResultLine,
+            fillConfig
         );
 
         const dimensions = [];
@@ -316,6 +330,15 @@ function prepareDimensions(
     return { collectionDimInfoList, finalResultDimInfoList };
 }
 
+function createGapLine(bucket: number, dimCount: number): OptionDataValue[] {
+    const gapLine = new Array(dimCount) as OptionDataValue[];
+    gapLine[0] = bucket;
+    for (let d = 1; d < dimCount; d++) {
+        gapLine[d] = null;
+    }
+    return gapLine;
+}
+
 function prepareGroupByDimInfo(
     config: AggregateTransformOption['config'],
     upstream: ExternalSource
@@ -334,18 +357,25 @@ interface TravelResult<LINE> {
     outList: LINE[];
 }
 
+interface FillInnerGapsConfig {
+    stepMs: number;
+    dimCount: number;
+}
+
 function travel<LINE>(
     groupByDimInfo: ExternalDimensionDefinition,
     upstream: ExternalSource,
     resultDimInfoList: ResultDimInfoInternal[],
     doCreate: CreateInTravel<LINE>,
-    doUpdate: UpdateInTravel<LINE>
+    doUpdate: UpdateInTravel<LINE>,
+    fillConfig?: FillInnerGapsConfig
 ): TravelResult<LINE> {
     const outList: TravelResult<LINE>['outList'] = [];
     let mapByGroup: TravelResult<LINE>['mapByGroup'];
 
     if (groupByDimInfo) {
         mapByGroup = {};
+        let lastOutputBucket: number | null = null;
 
         for (let dataIndex = 0, len = upstream.count(); dataIndex < len; dataIndex++) {
             const groupByVal = upstream.retrieveValue(dataIndex, groupByDimInfo.index);
@@ -358,9 +388,19 @@ function travel<LINE>(
             const groupByValStr = groupByVal + '';
 
             if (!hasOwn(mapByGroup, groupByValStr)) {
+                const bucketNum = +groupByVal;
+
+                if (fillConfig && lastOutputBucket != null && bucketNum - lastOutputBucket > fillConfig.stepMs) {
+                    const { stepMs: step, dimCount: dims } = fillConfig;
+                    for (let bucket = lastOutputBucket + step; bucket < bucketNum; bucket += step) {
+                        outList.push(createGapLine(bucket, dims) as unknown as LINE);
+                    }
+                }
+
                 const newLine = doCreate(upstream, dataIndex, resultDimInfoList, groupByDimInfo, groupByVal);
                 outList.push(newLine);
                 mapByGroup[groupByValStr] = newLine;
+                lastOutputBucket = bucketNum;
             }
             else {
                 const targetLine = mapByGroup[groupByValStr];

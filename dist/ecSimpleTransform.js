@@ -102,6 +102,7 @@
     const transform = {
         type: 'ecSimpleTransform:aggregate',
         transform: function (params) {
+            var _a;
             const upstream = params.upstream;
             const config = params.config;
             const groupByDimInfo = prepareGroupByDimInfo(config, upstream);
@@ -121,7 +122,11 @@
                     }
                 }
             }
-            const finalResult = travel(groupByDimInfo, upstream, finalResultDimInfoList, createFinalResultLine, updateFinalResultLine);
+            const stepMs = (_a = config.fillInnerGaps) === null || _a === void 0 ? void 0 : _a.stepMs;
+            const fillConfig = (groupByDimInfo && stepMs != null && stepMs > 0)
+                ? { stepMs, dimCount: finalResultDimInfoList.length }
+                : undefined;
+            const finalResult = travel(groupByDimInfo, upstream, finalResultDimInfoList, createFinalResultLine, updateFinalResultLine, fillConfig);
             const dimensions = [];
             for (let i = 0; i < finalResultDimInfoList.length; i++) {
                 dimensions.push(finalResultDimInfoList[i].name);
@@ -168,6 +173,14 @@
         }
         return { collectionDimInfoList, finalResultDimInfoList };
     }
+    function createGapLine(bucket, dimCount) {
+        const gapLine = new Array(dimCount);
+        gapLine[0] = bucket;
+        for (let d = 1; d < dimCount; d++) {
+            gapLine[d] = null;
+        }
+        return gapLine;
+    }
     function prepareGroupByDimInfo(config, upstream) {
         const groupByConfig = config.groupBy;
         let groupByDimInfo;
@@ -177,11 +190,12 @@
         }
         return groupByDimInfo;
     }
-    function travel(groupByDimInfo, upstream, resultDimInfoList, doCreate, doUpdate) {
+    function travel(groupByDimInfo, upstream, resultDimInfoList, doCreate, doUpdate, fillConfig) {
         const outList = [];
         let mapByGroup;
         if (groupByDimInfo) {
             mapByGroup = {};
+            let lastOutputBucket = null;
             for (let dataIndex = 0, len = upstream.count(); dataIndex < len; dataIndex++) {
                 const groupByVal = upstream.retrieveValue(dataIndex, groupByDimInfo.index);
                 if (groupByVal == null) {
@@ -189,9 +203,17 @@
                 }
                 const groupByValStr = groupByVal + '';
                 if (!hasOwn(mapByGroup, groupByValStr)) {
+                    const bucketNum = +groupByVal;
+                    if (fillConfig && lastOutputBucket != null && bucketNum - lastOutputBucket > fillConfig.stepMs) {
+                        const { stepMs: step, dimCount: dims } = fillConfig;
+                        for (let bucket = lastOutputBucket + step; bucket < bucketNum; bucket += step) {
+                            outList.push(createGapLine(bucket, dims));
+                        }
+                    }
                     const newLine = doCreate(upstream, dataIndex, resultDimInfoList, groupByDimInfo, groupByVal);
                     outList.push(newLine);
                     mapByGroup[groupByValStr] = newLine;
+                    lastOutputBucket = bucketNum;
                 }
                 else {
                     const targetLine = mapByGroup[groupByValStr];
